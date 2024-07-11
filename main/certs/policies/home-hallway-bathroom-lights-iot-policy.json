@@ -1,0 +1,27 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "iot:Connect",
+      "Resource": [
+        "arn:aws:iot:us-east-1:657592885771:client/hallway-bathroom-esp32-sensor",
+        "arn:aws:iot:us-east-1:657592885771:client/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iot:Publish",
+        "iot:Receive",
+        "iot:Subscribe"
+      ],
+      "Resource": [
+        "arn:aws:iot:us-east-1:657592885771:topic/home/hallway/bathroom/esp32/status",
+        "arn:aws:iot:us-east-1:657592885771:topicfilter/home/hallway/bathroom/esp32/status",
+        "arn:aws:iot:us-east-1:657592885771:topic/home/hallway/bathroom/esp32/update",
+        "arn:aws:iot:us-east-1:657592885771:topicfilter/home/hallway/bathroom/esp32/update"
+      ]
+    }
+  ]
+}

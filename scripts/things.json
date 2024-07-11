@@ -1,0 +1,16 @@
+{
+  "things": [
+    {
+      "thingName": "home-hallway-bathroom-lights",
+      "thingTypeName": "ws2812b-hallway-bathroom",
+      "attributePayload": {
+        "attributes": {
+          "Location": "home",
+          "SensorType": "am312",
+          "LedStrip": "ws2812b"
+        },
+        "merge": false
+      }
+    }
+  ]
+}
