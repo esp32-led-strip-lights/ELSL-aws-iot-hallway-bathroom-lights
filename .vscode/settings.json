@@ -1,0 +1,17 @@
+{
+    "idf.adapterTargetName": "esp32",
+    "files.associations": {
+        "mqtt.h": "c"
+    },
+    "sonarlint.pathToCompileCommands": "${workspaceFolder}/build/compile_commands.json",
+    "terminal.integrated.profiles.osx": {
+        "MyCustomProfile": {
+            "path": "/bin/zsh",
+            "args": [
+                "-c",
+                "source ~/.zshrc && setidf && clear && exec zsh"
+            ]
+        }
+    },
+    "terminal.integrated.defaultProfile.osx": "MyCustomProfile",
+}
