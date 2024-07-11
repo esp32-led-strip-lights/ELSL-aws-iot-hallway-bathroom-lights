@@ -6,14 +6,13 @@ set(SOURCES
     "main.c" 
     "wifi.c" 
     "mqtt.c" 
-    "led.c" 
-    "state_handler.c"
-    "sensors.c"
     "ota.c"
     "logging.c"
+    "motion_sensor.c"
+    "led_strip.c"
     "certs/amazon_root_ca1.c"
-    "certs/chicken_coop_controller_cert.c"
-    "certs/chicken_coop_controller_private_key.c"
+    "certs/home_hallway_bathroom_lights_certificate_pem.c"
+    "certs/home_hallway_bathroom_lights_private_pem_key.c"
 )
 
 # Specify the directory containing the header files

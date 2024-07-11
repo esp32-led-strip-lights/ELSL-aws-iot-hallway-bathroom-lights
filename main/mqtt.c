@@ -4,7 +4,6 @@
 #include "esp_log.h"
 #include "mqtt_client.h"
 #include "cJSON.h"
-#include "led.h"
 #include "state_handler.h"
 #include "mbedtls/debug.h"  // Add this to include mbedtls debug functions
 #include "esp_random.h"

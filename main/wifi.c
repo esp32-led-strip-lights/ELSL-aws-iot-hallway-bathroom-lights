@@ -6,7 +6,6 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "mqtt.h"
-#include "led.h"
 #include "sdkconfig.h"
 
 static const char *TAG = "WIFI";
