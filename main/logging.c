@@ -11,7 +11,7 @@
 #include "cJSON.h"
 
 
-static const char *MQTT_HOST = "COOP_CONTROLLER";
+static const char *MQTT_HOST = CONFIG_WIFI_HOSTNAME; 
 
 #define LOG_QUEUE_SIZE 10
 #define LOG_MESSAGE_MAX_LENGTH 1024

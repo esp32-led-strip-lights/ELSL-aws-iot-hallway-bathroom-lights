@@ -2,25 +2,29 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "motion_sensor.h"
 #include "wifi.h"
 #include "mqtt.h"
+#include "led_strip.h"
+#include "driver/rmt_tx.h"
+#include "driver/rmt_rx.h"
 #include "led_handler.h"
 
 static const char *TAG = "MAIN";
 static EventGroupHandle_t wifi_event_group;
-QueueHandle_t motion_event_queue;  // Define the queue handle
+QueueHandle_t motion_event_queue;
+SemaphoreHandle_t wifi_connected_semaphore;  // Define the semaphore handle
+SemaphoreHandle_t motion_detection_semaphore; // Semaphore for motion detection
 
 const int WIFI_CONNECTED_BIT = BIT0;
 
 void motion_detection_task(void *pvParameter) {
-    motion_sensor_init();
     uint32_t motion_event;
     while (1) {
         if (xQueueReceive(motion_event_queue, &motion_event, portMAX_DELAY)) {
-            ESP_LOGI(TAG, "Motion detected!");
             uint32_t led_event = LED_ON;
             xQueueSend(led_event_queue, &led_event, portMAX_DELAY);
         }
@@ -30,23 +34,26 @@ void motion_detection_task(void *pvParameter) {
 void wifi_management_task(void *pvParameter) {
     wifi_init_sta();
     while (1) {
-        EventBits_t bits = xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, 
-                                                pdFALSE, pdFALSE, portMAX_DELAY);
+        EventBits_t bits = xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
         if (bits & WIFI_CONNECTED_BIT) {
             ESP_LOGI(TAG, "Connected to WiFi");
+            xSemaphoreGive(wifi_connected_semaphore); // Give the semaphore when WiFi is connected
         }
-        vTaskDelay(pdMS_TO_TICKS(1000)); // Adjust delay as needed
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
 void mqtt_handling_task(void *pvParameter) {
-    mqtt_app_start();
-    while (1) {
-        // Handle MQTT events
-        if (!is_mqtt_connected) {
-            ESP_LOGI(TAG, "MQTT Disconnected!");
+    // Wait for the WiFi to be connected
+    if (xSemaphoreTake(wifi_connected_semaphore, portMAX_DELAY)) {
+        mqtt_app_start();
+        while (1) {
+            // Handle MQTT events
+            if (!is_mqtt_connected) {
+                ESP_LOGI(TAG, "MQTT Disconnected!");
+            }
+            vTaskDelay(pdMS_TO_TICKS(1000));
         }
-        vTaskDelay(pdMS_TO_TICKS(1000)); // Adjust delay as needed
     }
 }
 
@@ -62,18 +69,25 @@ void app_main(void) {
     wifi_event_group = xEventGroupCreate();
     // Create queue for motion detection events
     motion_event_queue = xQueueCreate(10, sizeof(uint32_t));
+    // Create the semaphore
+    wifi_connected_semaphore = xSemaphoreCreateBinary();
+    motion_detection_semaphore = xSemaphoreCreateBinary();
+    xSemaphoreGive(motion_detection_semaphore); // Start with the semaphore given
 
-    // Initialize the LED handler
+    // Initialize the LED strip and turn off at boot
     led_handler_init();
+
+    // Initialize the motion sensor
+    motion_sensor_init();
 
     // Create tasks
     xTaskCreate(&motion_detection_task, "motion_detection_task", 2048, NULL, 5, NULL);
-    xTaskCreate(&led_handling_task, "led_handling_task", 2048, NULL, 5, NULL);
     xTaskCreate(&wifi_management_task, "wifi_management_task", 4096, NULL, 5, NULL);
     xTaskCreate(&mqtt_handling_task, "mqtt_handling_task", 4096, NULL, 5, NULL);
+    xTaskCreate(&led_handling_task, "led_handling_task", 2048, NULL, 5, NULL);
 
     // Infinite loop to prevent exiting app_main
     while (true) {
-        vTaskDelay(pdMS_TO_TICKS(1000)); // Adjust delay as needed
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
