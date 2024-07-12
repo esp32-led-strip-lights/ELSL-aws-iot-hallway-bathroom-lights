@@ -4,10 +4,8 @@
 #include "esp_log.h"
 #include "mqtt_client.h"
 #include "cJSON.h"
-#include "state_handler.h"
 #include "mbedtls/debug.h"  // Add this to include mbedtls debug functions
 #include "esp_random.h"
-#include "sensors.h"
 #include "ota.h"
 #include "mqtt.h"
 #include "sdkconfig.h"
@@ -24,11 +22,11 @@ TaskHandle_t logging_task_handle = NULL;  // Task handle for console logging
 // Define NETWORK_TIMEOUT_MS
 #define NETWORK_TIMEOUT_MS 10000  // Example value, set as appropriate for your application
 
-extern const uint8_t chicken_coop_controller_cert[];
-extern const uint8_t chicken_coop_controller_private_key[];
+extern const uint8_t home_hallway_bathroom_lights_certificate_pem[];
+extern const uint8_t home_hallway_bathroom_lights_private_pem_key[];
 
-const uint8_t *cert_start = chicken_coop_controller_cert;
-const uint8_t *key_start = chicken_coop_controller_private_key;
+const uint8_t *cert_start = home_hallway_bathroom_lights_certificate_pem;
+const uint8_t *key_start = home_hallway_bathroom_lights_private_pem_key;
 
 static const char *TAG = "MQTT";
 bool is_mqtt_connected = false;
@@ -44,30 +42,10 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
         mqtt_setup_complete = true; // MQTT setup is complete
         is_mqtt_connected = true;
-        xTaskCreate(logging_task, "logging_task", 8192, (void *)client, 10, &logging_task_handle);
-        ESP_LOGI(TAG, "Subscribing to topic %s", CONFIG_MQTT_SUBSCRIBE_STATUS_TOPIC);
-        esp_mqtt_client_subscribe(client, CONFIG_MQTT_SUBSCRIBE_STATUS_TOPIC, 0);
-        ESP_LOGI(TAG, "Subscribing to topic %s", CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_CONTROLLER_TOPIC);
-        esp_mqtt_client_subscribe(client, CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_CONTROLLER_TOPIC, 0);
-        if (read_sensors_task_handle == NULL) {
-            xTaskCreate(&read_sensors_task, "read_sensors_task", 4096, (void *)client, 5, &read_sensors_task_handle);
-        }
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
         is_mqtt_connected = false;
-        if (read_sensors_task_handle != NULL) {
-            vTaskDelete(read_sensors_task_handle);
-            read_sensors_task_handle = NULL;
-        }
-        if (ota_task_handle != NULL) {
-            vTaskDelete(ota_task_handle);
-            ota_task_handle = NULL;
-        }
-        if (logging_task_handle != NULL) {
-            vTaskDelete(logging_task_handle);
-            logging_task_handle = NULL;
-        }
         break;
     case MQTT_EVENT_SUBSCRIBED:
         ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
@@ -82,28 +60,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         ESP_LOGI(TAG, "MQTT_EVENT_DATA");
         ESP_LOGI(TAG,"TOPIC=%.*s\r", event->topic_len, event->topic);
         ESP_LOGI(TAG,"DATA=%.*s\r", event->data_len, event->data);
-
-        if (strncmp(event->topic, CONFIG_MQTT_SUBSCRIBE_STATUS_TOPIC, event->topic_len) == 0) {
-            ESP_LOGW(TAG, "Received topic %s", CONFIG_MQTT_SUBSCRIBE_STATUS_TOPIC);
-            // Handle the status response
-            cJSON *json = cJSON_Parse(event->data);
-            if (json == NULL) {
-                ESP_LOGE(TAG, "Failed to parse JSON");
-            } else {
-                cJSON *state = cJSON_GetObjectItem(json, "LED");
-                if (cJSON_IsString(state)) {
-                    ESP_LOGI(TAG, "Parsed state: %s", state->valuestring);
-                    set_led_color_based_on_state(state->valuestring);
-                } else {
-                    ESP_LOGE(TAG, "JSON state item is not a string");
-                }
-                cJSON_Delete(json);
-            }
-        } else if (strncmp(event->topic, CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_CONTROLLER_TOPIC, event->topic_len) == 0) {
-            xTaskCreate(&ota_task, "ota_task", 8192, NULL, 5, &ota_task_handle);
-        } else {
-            ESP_LOGW(TAG, "Received unknown topic");
-        }
         break;
     case MQTT_EVENT_ERROR:
         ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
@@ -116,7 +72,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         } else {
             ESP_LOGI(TAG, "Unknown error type: 0x%x", event->error_handle->error_type);
         }
-        current_led_state = LED_FLASHING_WHITE;
         break;
     default:
         ESP_LOGI(TAG, "Other event id:%d", event->event_id);
@@ -163,7 +118,6 @@ void mqtt_app_start(void)
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
     if (client == NULL) {
         ESP_LOGE(TAG, "Failed to initialize MQTT client");
-        current_led_state = LED_FLASHING_WHITE;
         return;  // Do not proceed if initialization failed
     }
 
@@ -202,7 +156,6 @@ void mqtt_subscribe_task(void *pvParameters)
             vTaskDelay(pdMS_TO_TICKS(10000)); // Adjust delay as necessary
             continue;
         }
-        esp_mqtt_client_subscribe(client, CONFIG_MQTT_SUBSCRIBE_STATUS_TOPIC, 0);
         vTaskDelay(pdMS_TO_TICKS(10000)); // Adjust delay as necessary
     }
 }
