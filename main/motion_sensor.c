@@ -1,15 +1,23 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
 #include "motion_sensor.h"
 
 static const char *TAG = "MOTION_SENSOR";
+extern QueueHandle_t motion_event_queue;  // Declare the queue handle
 
 static void IRAM_ATTR motion_sensor_isr_handler(void* arg) {
     // This function will be called when motion is detected
-    ESP_LOGI(TAG, "Motion detected!");
+    uint32_t motion_detected = 1;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    xQueueSendFromISR(motion_event_queue, &motion_detected, &xHigherPriorityTaskWoken);
+    if (xHigherPriorityTaskWoken != pdFALSE) {
+        portYIELD_FROM_ISR();
+    }
 }
+
 void motion_sensor_init(void) {
     gpio_config_t io_conf;
     // Configure the PIR sensor pin as input

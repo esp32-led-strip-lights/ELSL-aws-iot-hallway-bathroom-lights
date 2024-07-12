@@ -9,7 +9,7 @@ set(SOURCES
     "ota.c"
     "logging.c"
     "motion_sensor.c"
-    "led_strip.c"
+    "led_handler.c"
     "certs/amazon_root_ca1.c"
     "certs/home_hallway_bathroom_lights_certificate_pem.c"
     "certs/home_hallway_bathroom_lights_private_pem_key.c"
