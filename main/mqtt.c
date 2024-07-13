@@ -35,6 +35,7 @@ static esp_mqtt_client_handle_t mqtt_client_handle = NULL; // Add this global va
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     esp_mqtt_event_handle_t event = event_data;
+    esp_mqtt_client_handle_t client = event->client;
 
     switch (event->event_id)
     {
@@ -46,7 +47,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         // Initialize logging tasks here
         if (logging_task_handle == NULL)
         {
-            xTaskCreate(logging_task, "logging_task", 8192, NULL, 5, &logging_task_handle); // Increased stack size to 8192
+            xTaskCreate(logging_task, "logging_task", 8192, (void *)client, 5, &logging_task_handle);
         }
         break;
 
@@ -64,7 +65,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         break;
 
     case MQTT_EVENT_PUBLISHED:
-        ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
+        // ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
         break;
 
     case MQTT_EVENT_DATA:

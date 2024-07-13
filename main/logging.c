@@ -36,14 +36,14 @@ void logging_task(void *pvParameters) {
     esp_log_set_vprintf(custom_vprintf); // Set custom vprintf function
     ESP_LOGI("LOGGING", "Custom logging initialized. Host: %s Topic: %s", CONFIG_WIFI_HOSTNAME, CONFIG_MQTT_PUBLISH_LOGGING_TOPIC);
 
-    esp_mqtt_client_handle_t mqtt_client = (esp_mqtt_client_handle_t)pvParameters;
+    esp_mqtt_client_handle_t client = (esp_mqtt_client_handle_t)pvParameters;
     while (true) {
         if (xQueueReceive(log_queue, &log_message, portMAX_DELAY) == pdPASS) {
-            if (mqtt_client != NULL) {
+            if (client != NULL) {
                 cJSON *root = cJSON_CreateObject();
                 cJSON_AddStringToObject(root, CONFIG_WIFI_HOSTNAME, log_message.message);
                 const char *json_string = cJSON_Print(root);
-                esp_mqtt_client_publish(mqtt_client, CONFIG_MQTT_PUBLISH_LOGGING_TOPIC, json_string, 0, 1, 0);
+                esp_mqtt_client_publish(client, CONFIG_MQTT_PUBLISH_LOGGING_TOPIC, json_string, 0, 1, 0);
                 cJSON_Delete(root);
             }
         }
