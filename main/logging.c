@@ -5,9 +5,16 @@
 
 QueueHandle_t log_queue; // Define log_queue
 
-int mqtt_vprintf(const char *fmt, va_list args) { // Define mqtt_vprintf
+int custom_vprintf(const char *fmt, va_list args) {
     char log_buffer[LOG_MESSAGE_MAX_LENGTH];
     int len = vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
+
+    // Send to default logging (console)
+    if (len >= 0) {
+        vprintf(fmt, args);
+    }
+
+    // Send to MQTT
     if (len >= 0 && len < LOG_MESSAGE_MAX_LENGTH) {
         log_message_t log_message;
         strncpy(log_message.message, log_buffer, LOG_MESSAGE_MAX_LENGTH - 1);
@@ -26,7 +33,7 @@ void logging_task(void *pvParameters) {
         ESP_LOGE("LOGGING", "Failed to create log queue");
         return;
     }
-    esp_log_set_vprintf(mqtt_vprintf); // Set custom vprintf function
+    esp_log_set_vprintf(custom_vprintf); // Set custom vprintf function
     ESP_LOGI("LOGGING", "Custom logging initialized. Host: %s Topic: %s", CONFIG_WIFI_HOSTNAME, CONFIG_MQTT_PUBLISH_LOGGING_TOPIC);
 
     esp_mqtt_client_handle_t mqtt_client = (esp_mqtt_client_handle_t)pvParameters;

@@ -76,13 +76,12 @@ void app_main(void) {
     motion_detection_semaphore = xSemaphoreCreateBinary();
     xSemaphoreGive(motion_detection_semaphore); // Start with the semaphore given
 
-    // Initialize the LED strip and turn off at boot
+    wifi_init_sta(); 
+
     led_handler_init();
 
-    // Initialize the motion sensor
     motion_sensor_init();
 
-    // Initialize MQTT client
     mqtt_app_start(); // Initialize MQTT without expecting a return value
     esp_mqtt_client_handle_t mqtt_client = mqtt_get_client(); // Get the client handle
 
@@ -90,8 +89,7 @@ void app_main(void) {
     xTaskCreate(&motion_detection_task, "motion_detection_task", 2048, NULL, 5, NULL);
     xTaskCreate(&wifi_management_task, "wifi_management_task", 4096, NULL, 5, NULL);
     xTaskCreate(&mqtt_handling_task, "mqtt_handling_task", 8192, NULL, 5, NULL);
-    xTaskCreate(&led_handling_task, "led_handling_task", 2048, NULL, 5, NULL);
-    xTaskCreate(&logging_task, "logging_task", 4096, mqtt_client, 5, NULL); 
+    xTaskCreate(&led_handling_task, "led_handling_task", 8192, NULL, 5, NULL);
 
     // Infinite loop to prevent exiting app_main
     while (true) {

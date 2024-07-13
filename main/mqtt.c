@@ -4,7 +4,7 @@
 #include "esp_log.h"
 #include "mqtt_client.h"
 #include "cJSON.h"
-#include "mbedtls/debug.h"  // Add this to include mbedtls debug functions
+#include "mbedtls/debug.h"
 #include "esp_random.h"
 #include "ota.h"
 #include "sdkconfig.h"
@@ -35,7 +35,6 @@ static esp_mqtt_client_handle_t mqtt_client_handle = NULL; // Add this global va
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     esp_mqtt_event_handle_t event = event_data;
-    // esp_mqtt_client_handle_t client = event->client; // Commented out as it's unused
 
     switch (event->event_id)
     {
@@ -43,37 +42,42 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
         mqtt_setup_complete = true; // MQTT setup is complete
         is_mqtt_connected = true;
+
+        // Initialize logging tasks here
+        if (logging_task_handle == NULL)
+        {
+            xTaskCreate(logging_task, "logging_task", 8192, NULL, 5, &logging_task_handle); // Increased stack size to 8192
+        }
         break;
+
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
         is_mqtt_connected = false;
         break;
+
     case MQTT_EVENT_SUBSCRIBED:
         ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
         break;
+
     case MQTT_EVENT_UNSUBSCRIBED:
         ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
         break;
+
     case MQTT_EVENT_PUBLISHED:
-        // ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
+        ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
         break;
+
     case MQTT_EVENT_DATA:
         ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-        ESP_LOGI(TAG,"TOPIC=%.*s\r", event->topic_len, event->topic);
-        ESP_LOGI(TAG,"DATA=%.*s\r", event->data_len, event->data);
+        printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
+        printf("DATA=%.*s\r\n", event->data_len, event->data);
+        mqtt_message_received = true; // Set this flag to true
         break;
+
     case MQTT_EVENT_ERROR:
         ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
-        if (event->error_handle->error_type == MQTT_ERROR_TYPE_ESP_TLS) {
-            ESP_LOGI(TAG, "Last ESP error code: 0x%x", event->error_handle->esp_tls_last_esp_err);
-            ESP_LOGI(TAG, "Last TLS stack error code: 0x%x", event->error_handle->esp_tls_stack_err);
-            ESP_LOGI(TAG, "Last TLS library error code: 0x%x", event->error_handle->esp_tls_cert_verify_flags);
-        } else if (event->error_handle->error_type == MQTT_ERROR_TYPE_CONNECTION_REFUSED) {
-            ESP_LOGI(TAG, "Connection refused error: 0x%x", event->error_handle->connect_return_code);
-        } else {
-            ESP_LOGI(TAG, "Unknown error type: 0x%x", event->error_handle->error_type);
-        }
         break;
+
     default:
         ESP_LOGI(TAG, "Other event id:%d", event->event_id);
         break;

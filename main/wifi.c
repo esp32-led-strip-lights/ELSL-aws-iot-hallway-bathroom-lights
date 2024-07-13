@@ -19,16 +19,6 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
-static void generate_random_mac(uint8_t *mac)
-{
-    // Generate a random MAC address
-    esp_fill_random(mac, 6);
-    // Ensure the locally administered bit is set
-    mac[0] |= 0x02;
-    // Ensure the unicast bit is cleared
-    mac[0] &= 0xFE;
-}
-
 static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
@@ -61,8 +51,20 @@ void wifi_init_sta(void)
 
     ESP_ERROR_CHECK(esp_netif_init());
 
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_t *netif = esp_netif_create_default_wifi_sta();
+    esp_err_t event_loop_err = esp_event_loop_create_default();
+    if (event_loop_err == ESP_ERR_INVALID_STATE) {
+        ESP_LOGI(TAG, "Default event loop already running");
+    } else {
+        ESP_ERROR_CHECK(event_loop_err);
+    }
+
+    // Check if the default Wi-Fi station interface already exists
+    esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    if (netif == NULL) {
+        netif = esp_netif_create_default_wifi_sta();
+    } else {
+        ESP_LOGI(TAG, "Default Wi-Fi station interface already exists");
+    }
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
