@@ -7,7 +7,6 @@
 #include "mbedtls/debug.h"  // Add this to include mbedtls debug functions
 #include "esp_random.h"
 #include "ota.h"
-#include "mqtt.h"
 #include "sdkconfig.h"
 #include "logging.h"
 
@@ -31,10 +30,12 @@ const uint8_t *key_start = home_hallway_bathroom_lights_private_pem_key;
 static const char *TAG = "MQTT";
 bool is_mqtt_connected = false;
 
+static esp_mqtt_client_handle_t mqtt_client_handle = NULL; // Add this global variable
+
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     esp_mqtt_event_handle_t event = event_data;
-    esp_mqtt_client_handle_t client = event->client;
+    // esp_mqtt_client_handle_t client = event->client; // Commented out as it's unused
 
     switch (event->event_id)
     {
@@ -130,6 +131,8 @@ void mqtt_app_start(void)
     const int max_retries = 5;
     const int retry_delay_ms = 5000;
 
+    mqtt_client_handle = client; // Assign the client handle to the global variable
+
     do {
         err = esp_mqtt_client_start(client);
         if (err != ESP_OK) {
@@ -148,7 +151,7 @@ void mqtt_app_start(void)
 
 void mqtt_subscribe_task(void *pvParameters)
 {
-    esp_mqtt_client_handle_t client = (esp_mqtt_client_handle_t) pvParameters;
+    // esp_mqtt_client_handle_t client = (esp_mqtt_client_handle_t) pvParameters; // Commented out as it's unused
 
     while (1) {
         if (!mqtt_client_is_connected()) {
@@ -160,6 +163,10 @@ void mqtt_subscribe_task(void *pvParameters)
     }
 }
 
-bool mqtt_client_is_connected(void) {
+int mqtt_client_is_connected(void) { // Ensure the return type matches the declaration
     return is_mqtt_connected;
+}
+
+esp_mqtt_client_handle_t mqtt_get_client(void) {
+    return mqtt_client_handle; // Return the global client handle
 }

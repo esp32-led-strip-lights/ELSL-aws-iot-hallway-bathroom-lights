@@ -1,13 +1,14 @@
 #ifndef MQTT_H
 #define MQTT_H
-#include "mqtt_client.h" // Add this line to ensure esp_mqtt_client_handle_t is recognized
-#include <stdbool.h>
 
-extern esp_mqtt_client_handle_t client;
-extern bool is_mqtt_connected;
+#include "mqtt_client.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+extern esp_mqtt_client_handle_t mqtt_client; // Declare mqtt_client as extern
 
 void mqtt_app_start(void);
-void mqtt_subscribe_task(void *pvParameters);
-bool mqtt_client_is_connected(void);
+esp_mqtt_client_handle_t mqtt_get_client(void);
+int mqtt_client_is_connected(void);
 
 #endif // MQTT_H
