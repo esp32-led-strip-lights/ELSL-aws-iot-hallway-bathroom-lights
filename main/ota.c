@@ -12,12 +12,15 @@ static const char *TAG = "OTA";
 
 void ota_task(void *pvParameter)
 {
+    ESP_LOGI(TAG, "Starting OTA task");
     esp_err_t ota_finish_err = ESP_OK;
     esp_http_client_config_t config = {
         .url = CONFIG_OTA_URL,
         .cert_pem = (char *)amazon_root_ca1,
         .timeout_ms = 30000, // Increased timeout
     };
+
+    ESP_LOGI(TAG, "Starting OTA with URL: %s", config.url);
 
     esp_https_ota_config_t ota_config = {
         .http_config = &config,

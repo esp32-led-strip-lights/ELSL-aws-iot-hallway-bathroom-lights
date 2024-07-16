@@ -36,6 +36,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 {
     esp_mqtt_event_handle_t event = event_data;
     esp_mqtt_client_handle_t client = event->client;
+    int msg_id;
 
     switch (event->event_id)
     {
@@ -49,11 +50,25 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         {
             xTaskCreate(logging_task, "logging_task", 8192, (void *)client, 5, &logging_task_handle);
         }
-        break;
+        if (ota_task_handle == NULL)
+        {
+            // xTaskCreate(ota_task, "ota_task", 8192, (void *)client, 5, &ota_task_handle);
+            msg_id = esp_mqtt_client_subscribe(client, CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_TOPIC, 0);
+            ESP_LOGI(TAG, "Subscribed to OTA topic %s, msg_id=%d", CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_TOPIC, msg_id);
 
+        }
+        break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
         is_mqtt_connected = false;
+        if (ota_task_handle != NULL) {
+            vTaskDelete(ota_task_handle);
+            ota_task_handle = NULL;
+        }
+        if (logging_task_handle != NULL) {
+            vTaskDelete(logging_task_handle);
+            logging_task_handle = NULL;
+        }
         break;
 
     case MQTT_EVENT_SUBSCRIBED:
@@ -73,6 +88,10 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
         printf("DATA=%.*s\r\n", event->data_len, event->data);
         mqtt_message_received = true; // Set this flag to true
+        if (strncmp(event->topic, CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_TOPIC, event->topic_len) == 0) {
+            ESP_LOGI(TAG, "OTA update message received");
+            xTaskCreate(&ota_task, "ota_task", 8192, (void *)client, 5, &ota_task_handle);
+        } 
         break;
 
     case MQTT_EVENT_ERROR:
