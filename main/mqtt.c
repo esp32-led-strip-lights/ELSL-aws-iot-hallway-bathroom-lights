@@ -16,7 +16,7 @@ bool mqtt_message_received = false;
 
 TaskHandle_t read_sensors_task_handle = NULL;  // Task handle for read_sensors_task
 TaskHandle_t ota_task_handle = NULL;  // Task handle for OTA updating
-TaskHandle_t logging_task_handle = NULL;  // Task handle for console logging 
+// TaskHandle_t logging_task_handle = NULL;  // Task handle for console logging 
 
 // Define NETWORK_TIMEOUT_MS
 #define NETWORK_TIMEOUT_MS 10000  // Example value, set as appropriate for your application
@@ -46,13 +46,12 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         is_mqtt_connected = true;
 
         // Initialize logging tasks here
-        if (logging_task_handle == NULL)
-        {
-            xTaskCreate(logging_task, "logging_task", 8192, (void *)client, 5, &logging_task_handle);
-        }
+        // if (logging_task_handle == NULL)
+        // {
+        //     xTaskCreate(logging_task, "logging_task", 8192, (void *)client, 5, &logging_task_handle);
+        // }
         if (ota_task_handle == NULL)
         {
-            // xTaskCreate(ota_task, "ota_task", 8192, (void *)client, 5, &ota_task_handle);
             msg_id = esp_mqtt_client_subscribe(client, CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_TOPIC, 0);
             ESP_LOGI(TAG, "Subscribed to OTA topic %s, msg_id=%d", CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_TOPIC, msg_id);
 
@@ -65,10 +64,10 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             vTaskDelete(ota_task_handle);
             ota_task_handle = NULL;
         }
-        if (logging_task_handle != NULL) {
-            vTaskDelete(logging_task_handle);
-            logging_task_handle = NULL;
-        }
+        // if (logging_task_handle != NULL) {
+        //     vTaskDelete(logging_task_handle);
+        //     logging_task_handle = NULL;
+        // }
         break;
 
     case MQTT_EVENT_SUBSCRIBED:

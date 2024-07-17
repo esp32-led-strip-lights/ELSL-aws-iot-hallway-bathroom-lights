@@ -7,12 +7,13 @@ set(SOURCES
     "wifi.c" 
     "mqtt.c" 
     "ota.c"
-    "logging.c"
     "motion_sensor.c"
     "led_handler.c"
+    "insights.c"
     "certs/amazon_root_ca1.c"
     "certs/home_hallway_bathroom_lights_certificate_pem.c"
     "certs/home_hallway_bathroom_lights_private_pem_key.c"
+    "certs/esp_insights_auth_key.c"  # For diagnostics 
 )
 
 # Specify the directory containing the header files
@@ -22,6 +23,6 @@ set(INCLUDES ".")
 idf_component_register(
     SRCS ${SOURCES}
     INCLUDE_DIRS ${INCLUDES}
-    REQUIRES mbedtls app_update esp_https_ota
-    PRIV_REQUIRES mbedtls mqtt nvs_flash esp_wifi driver json
+    REQUIRES mbedtls app_update esp_https_ota esp_insights esp_diagnostics
+    PRIV_REQUIRES mbedtls mqtt nvs_flash esp_wifi driver json 
 )

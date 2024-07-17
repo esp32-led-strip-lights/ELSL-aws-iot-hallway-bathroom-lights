@@ -69,7 +69,7 @@ void light_led_strip_from_center_out(uint32_t color) {
             ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, center - i, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF));
         }
         ESP_ERROR_CHECK(led_strip_refresh(led_strip));
-        vTaskDelay(pdMS_TO_TICKS(100)); // Adjust delay for desired speed
+        vTaskDelay(pdMS_TO_TICKS(200)); // Adjust delay for desired speed
     }
 }
 
@@ -86,7 +86,7 @@ void led_handling_task(void *pvParameter) {
 
                     ESP_LOGI(TAG, "Turning on the LED strip.");
                     // Light the LED strip from center outwards
-                    light_led_strip_from_center_out(0xFFFFFF); // White color
+                    light_led_strip_from_center_out(0x101010); // light white color
 
                     // Delay based on CONFIG_MAX_LED_SHINE_MINUTES
                     uint32_t shine_duration = atoi(CONFIG_MAX_LED_SHINE_MINUTES) * 60 * 1000; // Convert minutes to milliseconds

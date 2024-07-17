@@ -19,7 +19,7 @@ convert_to_c() {
 }
 
 # Iterate over all .pem and .key files in the current directory
-for input_file in *.pem *.key; do
+for input_file in *.pem *.key *.txt *.crt; do
     # Check if file exists to avoid errors when no files are found
     [ -e "$input_file" ] || continue
 

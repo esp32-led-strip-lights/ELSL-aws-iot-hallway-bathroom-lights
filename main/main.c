@@ -14,8 +14,13 @@
 #include "led_handler.h"
 #include "cJSON.h"
 #include "logging.h"
+#include "esp_insights.h"
+#include "esp_system.h"
+#include "insights.h"
+
 
 static const char *TAG = "MAIN";
+
 static EventGroupHandle_t wifi_event_group;
 QueueHandle_t motion_event_queue;
 SemaphoreHandle_t wifi_connected_semaphore;  // Define the semaphore handle
@@ -78,12 +83,14 @@ void app_main(void) {
 
     wifi_init_sta(); 
 
-    led_handler_init();
-
-    motion_sensor_init();
+    init_insights();
 
     mqtt_app_start(); // Initialize MQTT without expecting a return value
     esp_mqtt_client_handle_t mqtt_client = mqtt_get_client(); // Get the client handle
+
+    led_handler_init();
+
+    motion_sensor_init();
 
     // Create tasks
     xTaskCreate(&motion_detection_task, "motion_detection_task", 2048, NULL, 5, NULL);
