@@ -10,7 +10,7 @@
 
 static const char *TAG = "LED_HANDLER";
 
-#define BLINK_GPIO 2
+#define BLINK_GPIO 18 
 
 led_strip_handle_t led_strip;
 extern SemaphoreHandle_t motion_detection_semaphore; // Declare motion_detection_semaphore as external

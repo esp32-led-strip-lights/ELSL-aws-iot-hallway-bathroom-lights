@@ -7,7 +7,7 @@
 #include "esp_log.h"
 
 // Define the PIR sensor GPIO pin
-#define MOTION_SENSOR_PIN 18
+#define MOTION_SENSOR_PIN 13
 
 // Function to initialize the PIR motion sensor
 void motion_sensor_init(void);
