@@ -10,6 +10,7 @@ set(SOURCES
     "motion_sensor.c"
     "led_handler.c"
     "insights.c"
+    "time_sync.c"
     "certs/amazon_root_ca1.c"
     "certs/home_hallway_bathroom_lights_certificate_pem.c"
     "certs/home_hallway_bathroom_lights_private_pem_key.c"

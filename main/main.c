@@ -17,6 +17,7 @@
 #include "esp_system.h"
 #include "insights.h"
 #include "ota.h"
+#include "time_sync.h"
 
 static const char *TAG = "MAIN";
 
@@ -83,6 +84,8 @@ void app_main(void) {
     xSemaphoreGive(motion_detection_semaphore); // Start with the semaphore given
 
     wifi_init_sta(); 
+
+    synchronize_time();
 
     init_insights();
 
