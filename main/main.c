@@ -13,7 +13,6 @@
 #include "driver/rmt_rx.h"
 #include "led_handler.h"
 #include "cJSON.h"
-#include "logging.h"
 #include "esp_insights.h"
 #include "esp_system.h"
 #include "insights.h"

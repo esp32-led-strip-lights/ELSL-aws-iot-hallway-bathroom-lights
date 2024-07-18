@@ -2,6 +2,7 @@
 #include "sdkconfig.h"
 #include <inttypes.h>
 #include "esp_timer.h"
+#include "esp_sleep.h"
 
 extern const uint8_t amazon_root_ca1[];
 
@@ -9,6 +10,16 @@ static const char *TAG = "OTA";
 
 #define MAX_RETRIES 5
 #define LOG_PROGRESS_INTERVAL 100
+
+
+void initiate_deep_sleep() {
+    ESP_LOGI(TAG, "Entering deep sleep for 1 minute...");
+    // Set the timer to wake up after 60 seconds
+    esp_sleep_enable_timer_wakeup(60 * 1000000);
+    // Enter deep sleep mode
+    esp_deep_sleep_start();
+}
+
 
 void ota_task(void *pvParameter)
 {
@@ -69,8 +80,8 @@ void ota_task(void *pvParameter)
             int minutes = (duration_s % 3600) / 60;
             int seconds = duration_s % 60;
 
-            ESP_LOGI(TAG, "OTA update successful, duration: %02d:%02d:%02d, restarting...", hours, minutes, seconds);
-            esp_restart();
+            ESP_LOGI(TAG, "OTA update successful, duration: %02d:%02d:%02d", hours, minutes, seconds);
+            initiate_deep_sleep();
         } else {
             ESP_LOGE(TAG, "OTA update failed: %s", esp_err_to_name(ota_finish_err));
         }

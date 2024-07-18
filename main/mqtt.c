@@ -4,11 +4,9 @@
 #include "esp_log.h"
 #include "mqtt_client.h"
 #include "cJSON.h"
-#include "mbedtls/debug.h"
 #include "esp_random.h"
 #include "ota.h"
 #include "sdkconfig.h"
-#include "logging.h"
 
 // Declare the global/static variables
 bool mqtt_setup_complete = false;
