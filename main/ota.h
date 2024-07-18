@@ -16,5 +16,5 @@
 #include "mqtt_client.h"
 
 void ota_task(void *pvParameter);
-void check_ota_boot(void); 
+bool was_booted_after_ota_update(void);
 #endif // OTA_UPDATE_H

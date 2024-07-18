@@ -7,6 +7,7 @@
 #include "esp_random.h"
 #include "ota.h"
 #include "sdkconfig.h"
+#include "wifi.h"
 
 // Declare the global/static variables
 bool mqtt_setup_complete = false;
@@ -36,18 +37,17 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     esp_mqtt_client_handle_t client = event->client;
     int msg_id;
 
+    if (!wifi_is_connected) {
+        ESP_LOGW(TAG, "Network is not connected. Ignoring MQTT events");
+        return;
+    }
+
     switch (event->event_id)
     {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
         mqtt_setup_complete = true; // MQTT setup is complete
         is_mqtt_connected = true;
-
-        // Initialize logging tasks here
-        // if (logging_task_handle == NULL)
-        // {
-        //     xTaskCreate(logging_task, "logging_task", 8192, (void *)client, 5, &logging_task_handle);
-        // }
         if (ota_task_handle == NULL)
         {
             msg_id = esp_mqtt_client_subscribe(client, CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_TOPIC, 0);
@@ -62,10 +62,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             vTaskDelete(ota_task_handle);
             ota_task_handle = NULL;
         }
-        // if (logging_task_handle != NULL) {
-        //     vTaskDelete(logging_task_handle);
-        //     logging_task_handle = NULL;
-        // }
         break;
 
     case MQTT_EVENT_SUBSCRIBED:
@@ -103,9 +99,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
 void mqtt_app_start(void)
 {
-    // Set mbedtls debug threshold to a higher level for detailed logs
-    // mbedtls_debug_set_threshold(0);
-
     char client_id[32];
     snprintf(client_id, sizeof(client_id), "ESP32_%08" PRIx32, esp_random());
 
@@ -148,11 +141,16 @@ void mqtt_app_start(void)
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
 
     esp_err_t err;
+    mqtt_client_handle = client; // Assign the client handle to the global variable
+
+    while (!wifi_is_connected) {
+        ESP_LOGI(TAG, "Network is not connected. Retrying in 30 seconds...");
+        vTaskDelay(pdMS_TO_TICKS(30000)); // Delay for 30 seconds
+    }
+
     int retry_count = 0;
     const int max_retries = 5;
     const int retry_delay_ms = 5000;
-
-    mqtt_client_handle = client; // Assign the client handle to the global variable
 
     do {
         err = esp_mqtt_client_start(client);

@@ -65,22 +65,13 @@ void mqtt_handling_task(void *pvParameter) {
 
 
 void app_main(void) {
+    char buffer[128];
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
-
-    check_ota_boot();
-
-    const esp_partition_t *configured = esp_ota_get_boot_partition();
-    const esp_partition_t *running = esp_ota_get_running_partition();
-
-    ESP_LOGI(TAG, "Configured OTA boot partition: type %d subtype %d (offset 0x%08lx)\n", 
-            configured->type, configured->subtype, configured->address);
-    ESP_LOGI(TAG, "Running partition: type %d subtype %d (offset 0x%08lx)\n", 
-            running->type, running->subtype, running->address);
 
     // Create event group for WiFi
     wifi_event_group = xEventGroupCreate();
@@ -104,9 +95,23 @@ void app_main(void) {
 
     // Create tasks
     xTaskCreate(&motion_detection_task, "motion_detection_task", 2048, NULL, 5, NULL);
-    xTaskCreate(&wifi_management_task, "wifi_management_task", 4096, NULL, 5, NULL);
+    xTaskCreate(&wifi_management_task, "wifi_management_task", 4096, NULL, 6, NULL);
     xTaskCreate(&mqtt_handling_task, "mqtt_handling_task", 8192, NULL, 5, NULL);
     xTaskCreate(&led_handling_task, "led_handling_task", 8192, NULL, 5, NULL);
+    
+    if (was_booted_after_ota_update()) {
+        ESP_LOGI(TAG, "Device booted after an OTA update.");
+        const esp_mqtt_client_handle_t current_mqtt_client = mqtt_get_client();
+        cJSON *root = cJSON_CreateObject();
+        sprintf(buffer, "Successful reboot after OTA update");
+        cJSON_AddStringToObject(root, CONFIG_WIFI_HOSTNAME, buffer);
+        const char *json_string = cJSON_Print(root);
+        esp_mqtt_client_publish(current_mqtt_client, CONFIG_MQTT_PUBLISH_OTA_PROGRESS_TOPIC, json_string, 0, 1, 0);
+        free(root);
+        free(json_string);
+    } else {
+        ESP_LOGI(TAG, "Device did not boot after an OTA update.");
+    }
 
     // Infinite loop to prevent exiting app_main
     while (true) {

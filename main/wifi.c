@@ -7,8 +7,8 @@
 #include "esp_log.h"
 #include "mqtt.h"
 #include "sdkconfig.h"
-#include "esp_netif.h" // Include esp_netif header
-#include "esp_random.h" 
+#include "esp_netif.h"
+#include "esp_random.h"
 
 static const char *TAG = "WIFI";
 
@@ -19,18 +19,22 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
+// Define the global variable
+bool wifi_is_connected = false;
+
 static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        wifi_is_connected = false; // Update the global variable
         if (s_retry_num < MAX_RETRY) {
             int wait_time = (1 << s_retry_num); // Exponential backoff
             ESP_LOGI(TAG, "Retrying to connect to the AP in %d seconds", wait_time);
             vTaskDelay(pdMS_TO_TICKS(wait_time * 1000));
             esp_wifi_connect();
             s_retry_num++;
-            ESP_LOGI(TAG, "Retry to connect to the AP");
+            ESP_LOGI(TAG, "Retry connecting to AP");
         } else {
             xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
             ESP_LOGI(TAG, "Failed to connect to the AP after %d attempts. Rebooting...", MAX_RETRY);
@@ -42,6 +46,7 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+        wifi_is_connected = true; // Update the global variable
     }
 }
 
