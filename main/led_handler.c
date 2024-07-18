@@ -11,6 +11,7 @@
 static const char *TAG = "LED_HANDLER";
 
 #define BLINK_GPIO 18 
+#define BRIGHTNESS 0x202020
 
 led_strip_handle_t led_strip;
 extern SemaphoreHandle_t motion_detection_semaphore; // Declare motion_detection_semaphore as external
@@ -86,7 +87,7 @@ void led_handling_task(void *pvParameter) {
 
                     ESP_LOGI(TAG, "Turning on the LED strip.");
                     // Light the LED strip from center outwards
-                    light_led_strip_from_center_out(0x101010); // light white color
+                    light_led_strip_from_center_out(BRIGHTNESS); 
 
                     // Delay based on CONFIG_MAX_LED_SHINE_MINUTES
                     uint32_t shine_duration = atoi(CONFIG_MAX_LED_SHINE_MINUTES) * 60 * 1000; // Convert minutes to milliseconds

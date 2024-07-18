@@ -11,6 +11,25 @@ static const char *TAG = "OTA";
 #define MAX_RETRIES 5
 #define LOG_PROGRESS_INTERVAL 100
 
+void check_ota_boot(void) {
+    // Get the boot information
+    esp_reset_reason_t reset_reason = esp_reset_reason();
+
+    // Get the current running partition
+    const esp_partition_t *running_partition = esp_ota_get_running_partition();
+    const esp_partition_t *last_invalid_partition = esp_ota_get_last_invalid_partition();
+
+    ESP_LOGI(TAG, "Reset reason: %d", reset_reason);
+    ESP_LOGI(TAG, "Running partition: %s", running_partition->label);
+
+    if (reset_reason == ESP_RST_SW && last_invalid_partition) {
+        // If the reset reason is a software reset and there is a last invalid partition,
+        // it is likely due to an OTA update.
+        ESP_LOGI(TAG, "Booted due to OTA update");
+    } else {
+        ESP_LOGI(TAG, "Normal boot");
+    }
+}
 
 void initiate_deep_sleep() {
     ESP_LOGI(TAG, "Entering deep sleep for 1 minute...");

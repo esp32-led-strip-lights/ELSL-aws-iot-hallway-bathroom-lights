@@ -16,7 +16,7 @@
 #include "esp_insights.h"
 #include "esp_system.h"
 #include "insights.h"
-
+#include "ota.h"
 
 static const char *TAG = "MAIN";
 
@@ -63,6 +63,7 @@ void mqtt_handling_task(void *pvParameter) {
     }
 }
 
+
 void app_main(void) {
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -70,6 +71,16 @@ void app_main(void) {
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+
+    check_ota_boot();
+
+    const esp_partition_t *configured = esp_ota_get_boot_partition();
+    const esp_partition_t *running = esp_ota_get_running_partition();
+
+    ESP_LOGI(TAG, "Configured OTA boot partition: type %d subtype %d (offset 0x%08lx)\n", 
+            configured->type, configured->subtype, configured->address);
+    ESP_LOGI(TAG, "Running partition: type %d subtype %d (offset 0x%08lx)\n", 
+            running->type, running->subtype, running->address);
 
     // Create event group for WiFi
     wifi_event_group = xEventGroupCreate();
