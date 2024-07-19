@@ -37,6 +37,12 @@ led_strip_rmt_config_t led_strip_rmt_config = {
 
 QueueHandle_t led_event_queue;
 
+// Function to convert milliseconds to minutes
+uint32_t ms_to_minutes(uint32_t milliseconds) {
+    return milliseconds / (60 * 1000);
+}
+
+
 void led_handler_init() {
     // Initialize max_leds here
     strip_config.max_leds = atoi(CONFIG_MAX_LED_COUNT);
@@ -90,8 +96,11 @@ void led_handling_task(void *pvParameter) {
                     light_led_strip_from_center_out(BRIGHTNESS); 
 
                     // Delay based on CONFIG_MAX_LED_SHINE_MINUTES
-                    uint32_t shine_duration = atoi(CONFIG_MAX_LED_SHINE_MINUTES) * 60 * 1000; // Convert minutes to milliseconds
-                    ESP_LOGI(TAG, "LEDs will shine for %" PRIu32 " milliseconds.", shine_duration);
+                    uint32_t shine_duration = atoi(CONFIG_MAX_LED_SHINE_MINUTES) * 60 * 1000; 
+                    uint32_t shine_duration_minutes = ms_to_minutes(shine_duration);
+                    ESP_LOGI(TAG, "LEDs will shine for %" PRIu32 " minutes (%" PRIu32 " milliseconds).", 
+                             shine_duration_minutes, shine_duration);
+
                     vTaskDelay(pdMS_TO_TICKS(shine_duration));
 
                     ESP_LOGI(TAG, "Turning off the LED strip.");

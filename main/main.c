@@ -103,7 +103,7 @@ void app_main(void) {
     xTaskCreate(&led_handling_task, "led_handling_task", 8192, NULL, 5, NULL);
     
     if (was_booted_after_ota_update()) {
-        ESP_LOGI(TAG, "Device booted after an OTA update.");
+        ESP_LOGW(TAG, "Device booted after an OTA update.");
         const esp_mqtt_client_handle_t current_mqtt_client = mqtt_get_client();
         cJSON *root = cJSON_CreateObject();
         sprintf(buffer, "Successful reboot after OTA update");
@@ -113,7 +113,7 @@ void app_main(void) {
         free(root);
         free(json_string);
     } else {
-        ESP_LOGI(TAG, "Device did not boot after an OTA update.");
+        ESP_LOGW(TAG, "Device did not boot after an OTA update.");
     }
 
     // Infinite loop to prevent exiting app_main
