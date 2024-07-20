@@ -69,10 +69,6 @@ void motion_sensor_init(void) {
 
     gpio_config(&io_conf);
 
-    // NOTE: Add a 0.1µF capacitor between VCC (3.3V) and GND near the sensor
-    // to filter out high-frequency noise and stabilize the power supply.
-    // Also consider adding a larger capacitor (10µF or 100µF) in parallel.
-
     // Install ISR service with default configuration
     gpio_install_isr_service(0);
     // Attach the interrupt service routine
