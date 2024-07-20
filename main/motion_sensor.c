@@ -1,13 +1,15 @@
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
+#include "motion_sensor.h"
+
 #include "driver/gpio.h"
 #include "esp_log.h"
-#include "motion_sensor.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/semphr.h"  // Include semaphore header
+#include "freertos/task.h"
 
 #define DEBOUNCE_PERIOD_MS 1000
 
-static const char *TAG = "MOTION_SENSOR";
+static const char* TAG = "MOTION_SENSOR";
 
 extern QueueHandle_t motion_event_queue;  // Declare the queue handle
 
@@ -24,22 +26,23 @@ static void IRAM_ATTR motion_sensor_isr_handler(void* arg) {
 
     // Software debounce logic
     if (current_time > debounce_end_time) {
-        debounce_end_time = current_time + pdMS_TO_TICKS(DEBOUNCE_PERIOD_MS);  
+        debounce_end_time = current_time + pdMS_TO_TICKS(DEBOUNCE_PERIOD_MS);
         last_motion_time = current_time;
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        log_motion_detected = true; 
-        if (xQueueSendFromISR(motion_event_queue, &motion_detected, &xHigherPriorityTaskWoken) != pdPASS) {
-            log_event_queue_full = true; 
+
+        if (xQueueSendFromISR(motion_event_queue, &motion_detected, &xHigherPriorityTaskWoken) !=
+            pdPASS) {
+            log_event_queue_full = true;
+        } else {
+            log_motion_detected = true;
         }
-        if (xHigherPriorityTaskWoken != pdFALSE) {
-            portYIELD_FROM_ISR();
-        }
+
     } else {
-        log_debounce_event = true; 
+        log_debounce_event = true;
     }
 }
 
-void logging_task(void* pvParameters) {
+void motion_logging_task(void* pvParameters) {
     while (1) {
         if (log_motion_detected) {
             ESP_LOGW(TAG, "Motion detected!");
@@ -53,18 +56,16 @@ void logging_task(void* pvParameters) {
             ESP_LOGI(TAG, "Motion event debounced.");
             log_debounce_event = false;
         }
-        vTaskDelay(pdMS_TO_TICKS(100)); // Adjust the delay as needed
+        vTaskDelay(pdMS_TO_TICKS(100));  // Adjust the delay as needed
     }
 }
 
 void motion_sensor_init(void) {
-    gpio_config_t io_conf = {
-        .intr_type = GPIO_INTR_POSEDGE,          // Trigger on rising edge
-        .mode = GPIO_MODE_INPUT,                 // Set as input mode
-        .pin_bit_mask = (1ULL << MOTION_SENSOR_PIN),
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,   
-        .pull_up_en = GPIO_PULLUP_DISABLE        
-    };
+    gpio_config_t io_conf = {.intr_type = GPIO_INTR_POSEDGE,  // Trigger on rising edge
+                             .mode = GPIO_MODE_INPUT,         // Set as input mode
+                             .pin_bit_mask = (1ULL << MOTION_SENSOR_PIN),
+                             .pull_down_en = GPIO_PULLDOWN_DISABLE,
+                             .pull_up_en = GPIO_PULLUP_DISABLE};
 
     gpio_config(&io_conf);
 
@@ -80,5 +81,5 @@ void motion_sensor_init(void) {
     ESP_LOGI(TAG, "PIR sensor initialized.");
 
     // Create the logging task
-    xTaskCreate(logging_task, "logging_task", 2048, NULL, 10, NULL);
+    xTaskCreate(motion_logging_task, "motion_logging_task", 2048, NULL, 10, NULL);
 }

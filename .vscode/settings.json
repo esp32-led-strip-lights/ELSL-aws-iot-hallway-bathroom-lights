@@ -1,4 +1,6 @@
 {
+    "editor.formatOnSave": true,
+    "clang-format.style": "{ BasedOnStyle: Google, IndentWidth: 4, ColumnLimit: 100 }",
     "idf.adapterTargetName": "esp32",
     "files.associations": {
         "mqtt.h": "c",
