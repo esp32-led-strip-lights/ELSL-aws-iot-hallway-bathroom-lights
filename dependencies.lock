@@ -12,17 +12,17 @@ dependencies:
       type: service
     version: 1.0.1
   espressif/esp_diagnostics:
-    component_hash: 2350938db074002ef088c05cd32d80a528185e47afdb3642427156256c3e13c5
+    component_hash: 2ea46a907cad1842e41a74b9efbd533ddd4908d3ccd06370c1f8355d41dd0342
     source:
       service_url: https://api.components.espressif.com/
       type: service
-    version: 1.1.0
+    version: 1.2.0
   espressif/esp_insights:
-    component_hash: 72ece1dcf0146275e1df976c713a9b193af0907931f3810957ee68a0a84b077d
+    component_hash: c2b5219b3343e79e6d62aa5589a204612416abe8bdb6ba11224dca1b9a3c62ba
     source:
       service_url: https://api.components.espressif.com/
       type: service
-    version: 1.1.0
+    version: 1.2.0
   espressif/led_strip:
     component_hash: fc66f8544851132555bc668475f7b68acd6a211c8075db5ce1951cbfa27dfb88
     source:
@@ -39,7 +39,7 @@ dependencies:
     component_hash: null
     source:
       type: idf
-    version: 5.2.0
+    version: 5.2.1
 manifest_hash: dfa03b66e38d092148d25be22f9df58a43e6c532fd092e50eb960ffd8f1a1e9b
 target: esp32
 version: 1.0.0

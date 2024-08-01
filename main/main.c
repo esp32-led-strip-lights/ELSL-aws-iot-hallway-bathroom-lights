@@ -85,7 +85,7 @@ void app_main(void) {
 
     synchronize_time();
 
-    init_insights();
+    // init_insights();
 
     mqtt_app_start();  // Initialize MQTT without expecting a return value
     esp_mqtt_client_handle_t mqtt_client = mqtt_get_client();  // Get the client handle
@@ -100,23 +100,33 @@ void app_main(void) {
     xTaskCreate(&mqtt_handling_task, "mqtt_handling_task", 8192, NULL, 5, NULL);
     xTaskCreate(&led_handling_task, "led_handling_task", 8192, NULL, 5, NULL);
 
-    if (was_booted_after_ota_update()) {
-        ESP_LOGW(TAG, "Device booted after an OTA update.");
-        const esp_mqtt_client_handle_t current_mqtt_client = mqtt_get_client();
-        cJSON *root = cJSON_CreateObject();
-        sprintf(buffer, "Successful reboot after OTA update");
-        cJSON_AddStringToObject(root, CONFIG_WIFI_HOSTNAME, buffer);
-        const char *json_string = cJSON_Print(root);
-        esp_mqtt_client_publish(current_mqtt_client, CONFIG_MQTT_PUBLISH_OTA_PROGRESS_TOPIC,
-                                json_string, 0, 1, 0);
-        free(root);
-        free(json_string);
-    } else {
-        ESP_LOGW(TAG, "Device did not boot after an OTA update.");
-    }
-
     // Infinite loop to prevent exiting app_main
     while (true) {
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
+
+#if 0
+#include "driver/gpio.h"
+#include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+#define PIR_PIN 13
+// static const char *TAG = "PIR_TEST";
+
+void app_main() {
+    gpio_config_t io_conf = {.intr_type = GPIO_INTR_DISABLE,  // No interrupt for testing
+                             .mode = GPIO_MODE_INPUT,
+                             .pin_bit_mask = (1ULL << PIR_PIN),
+                             .pull_down_en = GPIO_PULLDOWN_DISABLE,
+                             .pull_up_en = GPIO_PULLUP_DISABLE};
+    gpio_config(&io_conf);
+
+    while (1) {
+        int pir_value = gpio_get_level(PIR_PIN);
+        ESP_LOGI(TAG, "PIR sensor value: %d", pir_value);
+        vTaskDelay(pdMS_TO_TICKS(100));  // Check the sensor every 100ms
+    }
+}
+#endif
