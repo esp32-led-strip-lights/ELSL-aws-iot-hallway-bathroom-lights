@@ -1,0 +1,3 @@
+[submodule "components/gecl-versioning-manager"]
+	path = components/gecl-versioning-manager
+	url = https://github.com/gamename-esp32-component-library/GECL-versioning-manager
