@@ -4,3 +4,6 @@
 [submodule "components/gecl-heartbeat-manager"]
 	path = components/gecl-heartbeat-manager
 	url = https://github.com/gamename-esp32-component-library/GECL-heartbeat-manager
+[submodule "components/gecl-wifi-manager"]
+	path = components/gecl-wifi-manager
+	url = https://github.com/gamename-esp32-component-library/GECL-wifi-manager
