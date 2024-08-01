@@ -5,12 +5,12 @@ cmake_minimum_required(VERSION 3.5)
 set(SOURCES 
     "main.c" 
     "wifi.c" 
-    "mqtt.c" 
-    "ota.c"
-    "motion_sensor.c"
+    
+   
+   
     "led_handler.c"
-    "insights.c"
-    "time_sync.c"
+   
+   
     "certs/amazon_root_ca1.c"
     "certs/home_hallway_bathroom_lights_certificate_pem.c"
     "certs/home_hallway_bathroom_lights_private_pem_key.c"
@@ -26,4 +26,6 @@ idf_component_register(
     INCLUDE_DIRS ${INCLUDES}
     REQUIRES mbedtls app_update esp_https_ota esp_insights esp_diagnostics
     PRIV_REQUIRES mbedtls mqtt nvs_flash esp_wifi driver json 
+)
+n 
 )
