@@ -1,70 +1,166 @@
 #include "cJSON.h"
 #include "driver/rmt_rx.h"
 #include "driver/rmt_tx.h"
-#include "esp_insights.h"
+#include "esp_https_ota.h"
 #include "esp_log.h"
 #include "esp_system.h"
+#include "esp_task_wdt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/queue.h"
-#include "freertos/semphr.h"
 #include "freertos/task.h"
-#include "insights.h"
+#include "gecl-heartbeat-manager.h"
+#include "gecl-logger-manager.h"
+#include "gecl-misc-util-manager.h"
+#include "gecl-mqtt-manager.h"
+#include "gecl-ota-manager.h"
+#include "gecl-telemetry-manager.h"
+#include "gecl-time-sync-manager.h"
+#include "gecl-versioning-manager.h"
+#include "gecl-wifi-manager.h"
 #include "led_handler.h"
 #include "led_strip.h"
-#include "motion_sensor.h"
-#include "mqtt.h"
 #include "nvs_flash.h"
-#include "ota.h"
-#include "time_sync.h"
-#include "wifi.h"
+#include "sdkconfig.h"
 
 static const char *TAG = "MAIN";
 
-static EventGroupHandle_t wifi_event_group;
 QueueHandle_t motion_event_queue;
-SemaphoreHandle_t wifi_connected_semaphore;  // Define the semaphore handle
+QueueHandle_t log_queue = NULL;
+QueueHandle_t led_state_queue = NULL;
 
-const int WIFI_CONNECTED_BIT = BIT0;
+extern const uint8_t home_hallway_bathroom_lights_certificate_pem[];
+extern const uint8_t home_hallway_bathroom_lights_private_pem_key[];
 
-void motion_detection_task(void *pvParameter) {
-    uint32_t motion_event;
-    while (1) {
-        if (xQueueReceive(motion_event_queue, &motion_event, portMAX_DELAY)) {
-            uint32_t led_event = LED_ON;
-            xQueueSend(led_event_queue, &led_event, portMAX_DELAY);
-        }
-        vTaskDelay(pdMS_TO_TICKS(1000));
+void custom_handle_mqtt_event_connected(esp_mqtt_event_handle_t event) {
+    esp_mqtt_client_handle_t client = event->client;
+    ESP_LOGI(TAG, "Custom handler: MQTT_EVENT_CONNECTED");
+
+    ESP_LOGI(TAG, "Subscribing to topic %s", CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_CONTROLLER_TOPIC);
+    esp_mqtt_client_subscribe(client, CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_CONTROLLER_TOPIC, 0);
+
+    ESP_LOGI(TAG, "Subscribing to topic %s", CONFIG_MQTT_SUBSCRIBE_TELEMETRY_REQUEST_TOPIC);
+    esp_mqtt_client_subscribe(client, CONFIG_MQTT_SUBSCRIBE_TELEMETRY_REQUEST_TOPIC, 0);
+
+    if (read_sensors_task_handle == NULL) {
+        xTaskCreate(&read_sensors_task, "read_sensors_task", 4096, (void *)client, 5,
+                    &read_sensors_task_handle);
     }
 }
 
-void wifi_management_task(void *pvParameter) {
-    wifi_init_sta();
-    while (1) {
-        EventBits_t bits = xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE,
-                                               pdFALSE, portMAX_DELAY);
-        if (bits & WIFI_CONNECTED_BIT) {
-            ESP_LOGI(TAG, "Connected to WiFi");
-            xSemaphoreGive(wifi_connected_semaphore);  // Give the semaphore when WiFi is connected
-        }
-        vTaskDelay(pdMS_TO_TICKS(1000));
+void custom_handle_mqtt_event_disconnected(esp_mqtt_event_handle_t event) {
+    ESP_LOGI(TAG, "Custom handler: MQTT_EVENT_DISCONNECTED");
+    if (ota_handler_task_handle != NULL) {
+        vTaskDelete(ota_handler_task_handle);
+        ota_handler_task_handle = NULL;
     }
 }
 
-void mqtt_handling_task(void *pvParameter) {
-    // Wait for the WiFi to be connected
-    if (xSemaphoreTake(wifi_connected_semaphore, portMAX_DELAY)) {
-        mqtt_app_start();
-        while (1) {
-            // Handle MQTT events
-            if (!mqtt_client_is_connected()) {
-                ESP_LOGI(TAG, "MQTT Disconnected!");
+void custom_handle_mqtt_event_data(esp_mqtt_event_handle_t event) {
+    ESP_LOGI(TAG, "Custom handler: MQTT_EVENT_DATA");
+    if (strncmp(event->topic, CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_CONTROLLER_TOPIC,
+                event->topic_len) == 0) {
+        ESP_LOGI(TAG, "Received topic %s", CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_CONTROLLER_TOPIC);
+        if (ota_handler_task_handle != NULL) {
+            eTaskState task_state = eTaskGetState(ota_handler_task_handle);
+            if (task_state != eDeleted) {
+                ESP_LOGW(TAG,
+                         "OTA task is already running or not yet cleaned up, skipping OTA update");
+                return;
             }
-            vTaskDelay(pdMS_TO_TICKS(1000));
+            // Clean up task handle if it has been deleted
+            ota_handler_task_handle = NULL;
         }
+        xTaskCreate(&ota_handler_task, "ota_handler_task", 8192, event, 5,
+                    &ota_handler_task_handle);
+    } else if (strncmp(event->topic, CONFIG_MQTT_SUBSCRIBE_TELEMETRY_REQUEST_TOPIC,
+                       event->topic_len) == 0) {
+        ESP_LOGI(TAG, "Received topic %s", CONFIG_MQTT_SUBSCRIBE_TELEMETRY_REQUEST_TOPIC);
+        transmit_telemetry();
     }
 }
 
+void custom_handle_mqtt_event_error(esp_mqtt_event_handle_t event) {
+    ESP_LOGI(TAG, "Custom handler: MQTT_EVENT_ERROR");
+    if (event->error_handle->error_type == MQTT_ERROR_TYPE_ESP_TLS) {
+        ESP_LOGI(TAG, "Last ESP error code: 0x%x", event->error_handle->esp_tls_last_esp_err);
+        ESP_LOGI(TAG, "Last TLS stack error code: 0x%x", event->error_handle->esp_tls_stack_err);
+        ESP_LOGI(TAG, "Last TLS library error code: 0x%x",
+                 event->error_handle->esp_tls_cert_verify_flags);
+    } else if (event->error_handle->error_type == MQTT_ERROR_TYPE_CONNECTION_REFUSED) {
+        ESP_LOGI(TAG, "Connection refused error: 0x%x", event->error_handle->connect_return_code);
+    } else {
+        ESP_LOGI(TAG, "Unknown error type: 0x%x", event->error_handle->error_type);
+    }
+    esp_restart();
+}
+
+QueueHandle_t start_logging(void) {
+    log_queue = xQueueCreate(LOG_QUEUE_LENGTH, sizeof(log_message_t));
+
+    if (log_queue == NULL) {
+        ESP_LOGE("MISC_UTIL", "Failed to create logger queue");
+        esp_restart();
+    }
+
+    xTaskCreate(&logger_task, "logger_task", 4096, NULL, 5, NULL);
+    return log_queue;
+}
+
+void setup_nvs_flash(void) {
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+}
+
+esp_mqtt_client_handle_t start_mqtt(const mqtt_config_t *config) {
+    // Define the configuration
+
+    // Set the custom event handlers
+    mqtt_set_event_connected_handler(custom_handle_mqtt_event_connected);
+    mqtt_set_event_disconnected_handler(custom_handle_mqtt_event_disconnected);
+    mqtt_set_event_data_handler(custom_handle_mqtt_event_data);
+    mqtt_set_event_error_handler(custom_handle_mqtt_event_error);
+
+    // Start the MQTT client
+    esp_mqtt_client_handle_t client = mqtt_app_start(config);
+
+    return client;
+}
+
+void app_main(void) {
+    setup_nvs_flash();
+
+    wifi_init_sta();
+
+    synchronize_time();
+
+    log_queue = start_logging();
+
+    mqtt_config_t config = {.certificate = home_hallway_bathroom_lights_certificate_pem,
+                            .private_key = home_hallway_bathroom_lights_private_pem_key,
+                            .broker_uri = CONFIG_AWS_IOT_ENDPOINT};
+
+    esp_mqtt_client_handle_t client = start_mqtt(&config);
+
+    xTaskCreate(&heartbeat_task, "heartbeat_task", 4096, (void *)client, 5, NULL);
+
+    xTaskCreate(&led_handling_task, "led_handling_task", 8192, NULL, 5, NULL);
+
+    init_telemetry_manager(device_name, client, CONFIG_MQTT_PUBLISH_TELEMETRY_TOPIC);
+
+    transmit_telemetry();
+
+    // Infinite loop to prevent exiting app_main
+    while (true) {
+        vTaskDelay(pdMS_TO_TICKS(100));  // Delay to allow other tasks to run
+    }
+}
+
+#if 0
 void app_main(void) {
     char buffer[128];
     esp_err_t ret = nvs_flash_init();
@@ -105,6 +201,7 @@ void app_main(void) {
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
+#endif
 
 #if 0
 #include "driver/gpio.h"
