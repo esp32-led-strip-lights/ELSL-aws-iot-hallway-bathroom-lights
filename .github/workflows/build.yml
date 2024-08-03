@@ -16,13 +16,6 @@ jobs:
           token: ${{ secrets.WORKFLOW_GITHUB_TOKEN }}
           submodules: recursive
 
-      - name: Unlock git-crypt
-        run: |
-          echo "${{ secrets.GIT_CRYPT_KEY }}" | base64 --decode > git-crypt-key
-          git-crypt unlock git-crypt-key
-          rm git-crypt-key
-        working-directory: ${{ github.workspace }}
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
@@ -35,6 +28,13 @@ jobs:
       - name: Use Docker image for ESP32 build
         run: |
           docker pull ${{ secrets.DOCKER_USERNAME }}/esp-idf:latest
+
+      - name: Unlock git-crypt
+        run: |
+          echo "${{ secrets.GIT_CRYPT_KEY }}" | base64 --decode > git-crypt-key
+          git-crypt unlock git-crypt-key
+          rm git-crypt-key
+        working-directory: ${{ github.workspace }}
 
       - name: Get the current commit hash
         id: vars
