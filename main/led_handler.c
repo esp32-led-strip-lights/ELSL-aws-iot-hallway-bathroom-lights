@@ -90,6 +90,7 @@ void led_handling_task(void *pvParameter) {
     bool led_on = false;
 
     assert(led_state_queue != NULL);
+    led_strip_clear(led_strip);
 
     while (1) {
         if (xQueueReceive(led_state_queue, &led_event, portMAX_DELAY)) {
