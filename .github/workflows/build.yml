@@ -62,11 +62,11 @@ jobs:
             -e VERSION_TAG=${{ env.VERSION_TAG }} \
             ${{ secrets.DOCKER_USERNAME }}/esp-idf:latest \
             /bin/bash -c "
+              git config --global --add safe.directory /workspace && \
               echo '${{ secrets.GIT_CRYPT_KEY }}' | base64 --decode > git-crypt-key && \
               git-crypt unlock git-crypt-key && \
               rm git-crypt-key && \
               . /opt/esp-idf/export.sh && \
-              git config --global --add safe.directory /workspace && \
               idf.py build
             "
         working-directory: ${{ github.workspace }}
