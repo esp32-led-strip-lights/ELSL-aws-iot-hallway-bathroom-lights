@@ -29,13 +29,6 @@ jobs:
         run: |
           docker pull ${{ secrets.DOCKER_USERNAME }}/esp-idf:latest
 
-      - name: Unlock git-crypt
-        run: |
-          echo "${{ secrets.GIT_CRYPT_KEY }}" | base64 --decode > git-crypt-key
-          git-crypt unlock git-crypt-key
-          rm git-crypt-key
-        working-directory: ${{ github.workspace }}
-
       - name: Get the current commit hash
         id: vars
         run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
@@ -60,7 +53,7 @@ jobs:
       - name: Set up Git safe directory
         run: git config --global --add safe.directory /workspace
 
-      - name: Build Controller
+      - name: Unlock git-crypt and Build Controller
         run: |
           docker run --rm \
             -v $PWD:/workspace \
@@ -68,7 +61,14 @@ jobs:
             -e COMPONENT_KCONFIGS_DIR=/workspace/components \
             -e VERSION_TAG=${{ env.VERSION_TAG }} \
             ${{ secrets.DOCKER_USERNAME }}/esp-idf:latest \
-            /bin/bash -c ". /opt/esp-idf/export.sh && git config --global --add safe.directory /workspace && idf.py build"
+            /bin/bash -c "
+              echo '${{ secrets.GIT_CRYPT_KEY }}' | base64 --decode > git-crypt-key && \
+              git-crypt unlock git-crypt-key && \
+              rm git-crypt-key && \
+              . /opt/esp-idf/export.sh && \
+              git config --global --add safe.directory /workspace && \
+              idf.py build
+            "
         working-directory: ${{ github.workspace }}
 
       - name: Get our versioning information
