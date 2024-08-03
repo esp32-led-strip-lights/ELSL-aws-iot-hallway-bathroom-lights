@@ -16,9 +16,6 @@ jobs:
           token: ${{ secrets.WORKFLOW_GITHUB_TOKEN }}
           submodules: recursive
 
-      - name: Install git-crypt
-        run: sudo apt-get install git-crypt
-
       - name: Unlock git-crypt
         run: |
           echo "${{ secrets.GIT_CRYPT_KEY }}" | base64 --decode > git-crypt-key
