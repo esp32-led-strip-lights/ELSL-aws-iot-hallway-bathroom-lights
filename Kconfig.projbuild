@@ -1,0 +1,27 @@
+menu "Project Configuration"
+
+    menu "GECL Time Sync Manager Configuration"
+    config GECL_TIME_SYNC_MANAGER_ENABLED
+        bool "Enable Time Sync Manager"
+        default y
+    
+    config GECL_TIME_SYNC_MANAGER_SYNC_INTERVAL
+        int "Time Sync Interval (seconds)"
+        default 3600
+        depends on GECL_TIME_SYNC_MANAGER_ENABLED
+    endmenu
+    
+    menu "GECL OTA Manager Configuration"
+    config GECL_OTA_MANAGER_ENABLED
+        bool "Enable OTA Manager"
+        default y
+    endmenu
+
+    menu "GECL HEARTBEAT Manager Configuration"
+        config GECL_HEARTBEAT_MANAGER_ENABLED
+            bool "Enable OTA Manager"
+            default y
+    endmenu
+         
+    endmenu
+    

@@ -20,16 +20,15 @@ idf_component_register(
     INCLUDE_DIRS 
         ${INCLUDES}
     REQUIRES 
+        nvs_flash 
         mbedtls 
         app_update 
         esp_https_ota 
         mqtt 
-    PRIV_REQUIRES 
-        mbedtls 
-        nvs_flash 
-        esp_wifi 
         driver 
+        esp_wifi 
         json
+    PRIV_REQUIRES 
         gecl-ota-manager
         gecl-wifi-manager
         gecl-time-sync-manager
@@ -39,4 +38,5 @@ idf_component_register(
         gecl-misc-util-manager
         gecl-versioning-manager
         gecl-telemetry-manager
+        gecl-motion-sensor-manager
 )

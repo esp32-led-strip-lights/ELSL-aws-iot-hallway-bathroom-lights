@@ -12,6 +12,7 @@
 #include "gecl-heartbeat-manager.h"
 #include "gecl-logger-manager.h"
 #include "gecl-misc-util-manager.h"
+#include "gecl-motion-sensor-manager.h"
 #include "gecl-mqtt-manager.h"
 #include "gecl-ota-manager.h"
 #include "gecl-telemetry-manager.h"
@@ -24,43 +25,48 @@
 #include "sdkconfig.h"
 
 static const char *TAG = "MAIN";
+const char *device_name = CONFIG_WIFI_HOSTNAME;
 
-QueueHandle_t motion_event_queue;
 QueueHandle_t log_queue = NULL;
-QueueHandle_t led_state_queue = NULL;
+
+TaskHandle_t ota_handler_task_handle = NULL;
 
 extern const uint8_t home_hallway_bathroom_lights_certificate_pem[];
 extern const uint8_t home_hallway_bathroom_lights_private_pem_key[];
+
+#define QUEUE_SIZE 10
+typedef struct {
+    int motion_detected;
+} motion_event_t;
+
+typedef struct {
+    int led_action;
+} led_event_t;
+
+typedef struct {
+    QueueHandle_t motion_queue;
+    QueueHandle_t led_queue;
+} motion_led_params_t;
 
 void custom_handle_mqtt_event_connected(esp_mqtt_event_handle_t event) {
     esp_mqtt_client_handle_t client = event->client;
     ESP_LOGI(TAG, "Custom handler: MQTT_EVENT_CONNECTED");
 
-    ESP_LOGI(TAG, "Subscribing to topic %s", CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_CONTROLLER_TOPIC);
-    esp_mqtt_client_subscribe(client, CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_CONTROLLER_TOPIC, 0);
+    ESP_LOGI(TAG, "Subscribing to topic %s", CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_TOPIC);
+    esp_mqtt_client_subscribe(client, CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_TOPIC, 0);
 
     ESP_LOGI(TAG, "Subscribing to topic %s", CONFIG_MQTT_SUBSCRIBE_TELEMETRY_REQUEST_TOPIC);
     esp_mqtt_client_subscribe(client, CONFIG_MQTT_SUBSCRIBE_TELEMETRY_REQUEST_TOPIC, 0);
-
-    if (read_sensors_task_handle == NULL) {
-        xTaskCreate(&read_sensors_task, "read_sensors_task", 4096, (void *)client, 5,
-                    &read_sensors_task_handle);
-    }
 }
 
 void custom_handle_mqtt_event_disconnected(esp_mqtt_event_handle_t event) {
     ESP_LOGI(TAG, "Custom handler: MQTT_EVENT_DISCONNECTED");
-    if (ota_handler_task_handle != NULL) {
-        vTaskDelete(ota_handler_task_handle);
-        ota_handler_task_handle = NULL;
-    }
 }
 
 void custom_handle_mqtt_event_data(esp_mqtt_event_handle_t event) {
     ESP_LOGI(TAG, "Custom handler: MQTT_EVENT_DATA");
-    if (strncmp(event->topic, CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_CONTROLLER_TOPIC,
-                event->topic_len) == 0) {
-        ESP_LOGI(TAG, "Received topic %s", CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_CONTROLLER_TOPIC);
+    if (strncmp(event->topic, CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_TOPIC, event->topic_len) == 0) {
+        ESP_LOGI(TAG, "Received topic %s", CONFIG_MQTT_SUBSCRIBE_OTA_UPDATE_TOPIC);
         if (ota_handler_task_handle != NULL) {
             eTaskState task_state = eTaskGetState(ota_handler_task_handle);
             if (task_state != eDeleted) {
@@ -131,6 +137,44 @@ esp_mqtt_client_handle_t start_mqtt(const mqtt_config_t *config) {
     return client;
 }
 
+void pass_motion_to_led_task(void *pvParameter) {
+    motion_led_params_t *params = (motion_led_params_t *)pvParameter;
+    motion_event_t motion_event;
+    led_event_t led_event;
+    assert(params->motion_queue != NULL && params->led_queue != NULL);
+
+    while (1) {
+        if (xQueueReceive(params->motion_queue, &motion_event, portMAX_DELAY)) {
+            led_event.led_action = motion_event.motion_detected;
+            xQueueSend(params->led_queue, &led_event, 0);
+            vTaskDelay(pdMS_TO_TICKS(100));  // Delay to allow other tasks to run
+        }
+    }
+}
+
+void associate_led_with_motion() {
+    QueueHandle_t motion_queue = get_motion_event_queue();
+    QueueHandle_t led_queue = get_led_state_queue();
+
+    if (motion_queue == NULL || led_queue == NULL) {
+        printf("Failed to create queues\n");
+        return;
+    }
+
+    // Allocate and initialize task parameters
+    motion_led_params_t *params = (motion_led_params_t *)malloc(sizeof(motion_led_params_t));
+    if (params == NULL) {
+        // Handle error
+        printf("Failed to allocate memory for task parameters\n");
+        return;
+    }
+    params->motion_queue = motion_queue;
+    params->led_queue = led_queue;
+
+    // Create the task and pass the parameters
+    xTaskCreate(pass_motion_to_led_task, "pass_motion_to_led_task", 2048, (void *)params, 5, NULL);
+}
+
 void app_main(void) {
     setup_nvs_flash();
 
@@ -146,11 +190,15 @@ void app_main(void) {
 
     esp_mqtt_client_handle_t client = start_mqtt(&config);
 
-    xTaskCreate(&heartbeat_task, "heartbeat_task", 4096, (void *)client, 5, NULL);
-
-    xTaskCreate(&led_handling_task, "led_handling_task", 8192, NULL, 5, NULL);
+    init_heartbeat_manager(client, CONFIG_MQTT_PUBLISH_HEARTBEAT_TOPIC);
 
     init_telemetry_manager(device_name, client, CONFIG_MQTT_PUBLISH_TELEMETRY_TOPIC);
+
+    init_motion_sensor_manager();
+
+    init_led_handler();
+
+    associate_led_with_motion();
 
     transmit_telemetry();
 
