@@ -13,7 +13,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          token: ${{ secrets.CONTROLLER_WORKFLOW_GITHUB_TOKEN }}
+          token: ${{ secrets.WORKFLOW_GITHUB_TOKEN }}
           submodules: recursive
 
       - name: Install git-crypt
@@ -21,7 +21,7 @@ jobs:
 
       - name: Unlock git-crypt
         run: |
-          echo "${{ secrets.GIT_CRYPT_CONTROLLER_KEY }}" | base64 --decode > git-crypt-key
+          echo "${{ secrets.GIT_CRYPT_KEY }}" | base64 --decode > git-crypt-key
           git-crypt unlock git-crypt-key
           rm git-crypt-key
         working-directory: ${{ github.workspace }}
@@ -85,7 +85,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: us-east-1
         run: |
-          aws s3 cp build/firmware.bin s3://${{ secrets.AWS_S3_BUCKET }}/coop-controller/$VERSION_TAG/firmware.bin
+          aws s3 cp build/firmware.bin ${{ secrets.AWS_S3_BUCKET_PREFIX }}/${{ secrets.S3_PATH }}/$VERSION_TAG/firmware.bin
         working-directory: ${{ github.workspace }}
 
       - name: Publish MQTT message
@@ -97,7 +97,7 @@ jobs:
         run: |
           aws iot-data publish \
             --endpoint-url $AWS_IOT_ENDPOINT_URL \
-            --topic "coop/update/controller" \
+            --topic "${{ secrets.OTA_TOPIC }}" \
             --cli-binary-format raw-in-base64-out \
-            --payload "{\"${{ secrets.CONTROLLER_WIFI_MAC_ADDRESS }}\": \"${{ secrets.AWS_S3_URL_PREFIX }}/coop-controller/$VERSION_TAG/firmware.bin\"}"
+            --payload "{\"${{ secrets.MAC_ADDRESS }}\": \"${{ secrets.AWS_S3_URL_PREFIX }}/${{ secrets.S3_PATH }}/$VERSION_TAG/firmware.bin\"}"
         working-directory: ${{ github.workspace }}
