@@ -81,7 +81,7 @@ void light_led_strip_from_center_out(uint32_t color) {
                                                 (color >> 8) & 0xFF, color & 0xFF));
         }
         ESP_ERROR_CHECK(led_strip_refresh(led_strip));
-        vTaskDelay(pdMS_TO_TICKS(200));  // Adjust delay for desired speed
+        vTaskDelay(pdMS_TO_TICKS(100));  // Adjust delay for desired speed
     }
 }
 
