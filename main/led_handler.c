@@ -13,7 +13,8 @@
 static const char *TAG = "LED_HANDLER";
 
 #define BLINK_GPIO 18
-#define BRIGHTNESS 0x202020
+#define BRIGHTNESS 0x606060
+#define DELAY_MS 50
 
 led_strip_handle_t led_strip;
 
@@ -81,7 +82,7 @@ void light_led_strip_from_center_out(uint32_t color) {
                                                 (color >> 8) & 0xFF, color & 0xFF));
         }
         ESP_ERROR_CHECK(led_strip_refresh(led_strip));
-        vTaskDelay(pdMS_TO_TICKS(100));  // Adjust delay for desired speed
+        vTaskDelay(pdMS_TO_TICKS(DELAY_MS));  // Adjust delay for desired speed
     }
 }
 

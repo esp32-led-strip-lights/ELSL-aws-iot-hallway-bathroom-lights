@@ -27,8 +27,6 @@
 static const char *TAG = "MAIN";
 const char *device_name = CONFIG_WIFI_HOSTNAME;
 
-QueueHandle_t log_queue = NULL;
-
 TaskHandle_t ota_handler_task_handle = NULL;
 
 extern const uint8_t home_hallway_bathroom_lights_certificate_pem[];
@@ -79,10 +77,6 @@ void custom_handle_mqtt_event_data(esp_mqtt_event_handle_t event) {
         }
         xTaskCreate(&ota_handler_task, "ota_handler_task", 8192, event, 5,
                     &ota_handler_task_handle);
-    } else if (strncmp(event->topic, CONFIG_MQTT_SUBSCRIBE_TELEMETRY_REQUEST_TOPIC,
-                       event->topic_len) == 0) {
-        ESP_LOGI(TAG, "Received topic %s", CONFIG_MQTT_SUBSCRIBE_TELEMETRY_REQUEST_TOPIC);
-        transmit_telemetry();
     }
 }
 
@@ -190,17 +184,17 @@ void app_main(void) {
 
     esp_mqtt_client_handle_t client = start_mqtt(&config);
 
-    init_heartbeat_manager(client, CONFIG_MQTT_PUBLISH_HEARTBEAT_TOPIC);
+    init_heartbeat_manager(client, CONFIG_MQTT_PUBLISH_HEARTBEAT_TOPIC,
+                           CONFIG_MQTT_HEARTBEAT_INTERVAL_MINUTES);
 
-    init_telemetry_manager(device_name, client, CONFIG_MQTT_PUBLISH_TELEMETRY_TOPIC);
+    init_telemetry_manager(device_name, client, CONFIG_MQTT_PUBLISH_TELEMETRY_TOPIC,
+                           CONFIG_MQTT_TELEMETRY_INTERVAL_MINUTES);
 
     init_motion_sensor_manager();
 
     init_led_handler();
 
     associate_led_with_motion();
-
-    transmit_telemetry();
 
     // Infinite loop to prevent exiting app_main
     while (true) {
