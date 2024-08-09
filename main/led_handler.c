@@ -111,12 +111,25 @@ void led_handling_task(void *pvParameter) {
                 vTaskDelay(pdMS_TO_TICKS(shine_duration));
 
                 ESP_LOGI(TAG, "Turning off the LED strip.");
-                // Turn off the LED strip
+                // Clear the LED strip twice with a delay in between
                 esp_err_t ret = led_strip_clear(led_strip);
                 if (ret != ESP_OK) {
-                    ESP_LOGE(TAG, "Error clearing LED strip: %s", esp_err_to_name(ret));
+                    ESP_LOGE(TAG, "Error clearing LED strip (first attempt): %s",
+                             esp_err_to_name(ret));
                 } else {
-                    ESP_LOGI(TAG, "LED strip cleared.");
+                    ESP_LOGI(TAG, "LED strip cleared (first attempt).");
+                }
+
+                // Short delay to ensure the strip processes the clear command
+                vTaskDelay(pdMS_TO_TICKS(50));  // Adjust the delay if needed
+
+                // Clear the strip again
+                ret = led_strip_clear(led_strip);
+                if (ret != ESP_OK) {
+                    ESP_LOGE(TAG, "Error clearing LED strip (second attempt): %s",
+                             esp_err_to_name(ret));
+                } else {
+                    ESP_LOGI(TAG, "LED strip cleared (second attempt).");
                 }
                 led_on = false;
             } else if (led_on) {
