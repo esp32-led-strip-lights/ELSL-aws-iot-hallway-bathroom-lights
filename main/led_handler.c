@@ -121,7 +121,7 @@ void led_handling_task(void *pvParameter) {
                 }
 
                 // Short delay to ensure the strip processes the clear command
-                vTaskDelay(pdMS_TO_TICKS(50));  // Adjust the delay if needed
+                vTaskDelay(pdMS_TO_TICKS(100));  // Adjust the delay if needed
 
                 // Clear the strip again
                 ret = led_strip_clear(led_strip);
@@ -131,6 +131,11 @@ void led_handling_task(void *pvParameter) {
                 } else {
                     ESP_LOGI(TAG, "LED strip cleared (second attempt).");
                 }
+
+                // Pull the data line low
+                gpio_set_level(BLINK_GPIO,
+                               0);  // Set the GPIO connected to the LED data line to low
+
                 led_on = false;
             } else if (led_on) {
                 ESP_LOGI(TAG, "No-Op: LED strip is already on.");
