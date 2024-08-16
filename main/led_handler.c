@@ -122,10 +122,6 @@ void led_handling_task(void *pvParameter) {
                 // Set all LEDs to off before clearing
                 set_all_leds_off();
 
-                // Pull the data line low
-                gpio_set_level(BLINK_GPIO,
-                               0);  // Set the GPIO connected to the LED data line to low
-
                 led_on = false;
             } else if (led_on) {
                 ESP_LOGI(TAG, "No-Op: LED strip is already on.");
