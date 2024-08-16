@@ -86,6 +86,13 @@ void light_led_strip_from_center_out(uint32_t color) {
     }
 }
 
+void set_all_leds_off() {
+    for (int i = 0; i < strip_config.max_leds; i++) {
+        ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, i, 0, 0, 0));
+    }
+    ESP_ERROR_CHECK(led_strip_refresh(led_strip));
+}
+
 void led_handling_task(void *pvParameter) {
     uint32_t led_event;
     bool led_on = false;
@@ -111,26 +118,9 @@ void led_handling_task(void *pvParameter) {
                 vTaskDelay(pdMS_TO_TICKS(shine_duration));
 
                 ESP_LOGI(TAG, "Turning off the LED strip.");
-                // Clear the LED strip twice with a delay in between
-                esp_err_t ret = led_strip_clear(led_strip);
-                if (ret != ESP_OK) {
-                    ESP_LOGE(TAG, "Error clearing LED strip (first attempt): %s",
-                             esp_err_to_name(ret));
-                } else {
-                    ESP_LOGI(TAG, "LED strip cleared (first attempt).");
-                }
 
-                // Short delay to ensure the strip processes the clear command
-                vTaskDelay(pdMS_TO_TICKS(100));  // Adjust the delay if needed
-
-                // Clear the strip again
-                ret = led_strip_clear(led_strip);
-                if (ret != ESP_OK) {
-                    ESP_LOGE(TAG, "Error clearing LED strip (second attempt): %s",
-                             esp_err_to_name(ret));
-                } else {
-                    ESP_LOGI(TAG, "LED strip cleared (second attempt).");
-                }
+                // Set all LEDs to off before clearing
+                set_all_leds_off();
 
                 // Pull the data line low
                 gpio_set_level(BLINK_GPIO,
