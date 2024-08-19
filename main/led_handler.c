@@ -87,7 +87,7 @@ void light_led_strip_from_center_out(uint32_t color) {
 }
 
 void set_all_leds_off() {
-    for (int i = 0; i < strip_config.max_leds; i++) {
+    for (int i = 0; i <= strip_config.max_leds; i++) {
         ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, i, 0, 0, 0));
     }
     ESP_ERROR_CHECK(led_strip_refresh(led_strip));
