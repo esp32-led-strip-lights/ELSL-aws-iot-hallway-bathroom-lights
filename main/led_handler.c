@@ -128,7 +128,6 @@ void led_handling_task(void *pvParameter)
 
                     // Set all LEDs to off before clearing
                     set_all_leds_off();
-
                     led_on = false;
                 }
             }
