@@ -6,7 +6,8 @@
         "mqtt.h": "c",
         "esp_http_client.h": "c",
         "wifi.h": "c",
-        "task.h": "c"
+        "task.h": "c",
+        "freertos.h": "c"
     },
     "sonarlint.pathToCompileCommands": "${workspaceFolder}/build/compile_commands.json",
     "terminal.integrated.profiles.osx": {
